@@ -11,11 +11,12 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <style>
     /* Estilo General preservado */
-    body { background: linear-gradient(135deg, #c4f1db 0%, #ffffff 50%, #888dbd 100%); min-height: 100vh; font-family: 'Poppins', sans-serif; color: #1e293b; }
+    body { background: linear-gradient(135deg, #e7c0d6 0%, #ffffff 50%, #e7adcd 100%); min-height: 100vh; font-family: 'Poppins', sans-serif; color: #1e293b; }
     .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(0, 242, 255, 0.3); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 180, 216, 0.1); }
     .tab-active { color: #0ea5e9; border-bottom: 3px solid #0ea5e9; font-weight: 700; }
     .btn-action { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); color: white; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(58, 123, 213, 0.3); }
@@ -132,19 +133,28 @@
         
 
         <div id="formPe" class="hidden space-y-4">
-          <input type="hidden" id="editPedidoIndex" value="-1">
-          <input type="text" id="peCli" placeholder="Nombre Cliente" class="w-full p-3 rounded-xl ring-1 ring-purple-300 text-sm">
-          <input type="text" id="pePro" placeholder="Producto/Detalle" class="w-full p-3 rounded-xl ring-1 ring-purple-300 text-sm">
-          <div class="grid grid-cols-2 gap-2">
-            <input type="number" id="peTot" placeholder="Total $" class="p-3 rounded-xl ring-1 ring-purple-300 text-sm">
-            <input type="number" id="peAnt" placeholder="Anticipo $" class="p-3 rounded-xl ring-1 ring-purple-300 text-sm">
-          </div>
-          <div class="flex gap-2">
-            <button onclick="guardarPedido()" id="btnSavePedido" class="flex-1 py-3 rounded-xl bg-purple-600 text-white font-bold uppercase text-xs">Guardar Pedido</button>
-            <button onclick="cancelarEdicionPedido()" id="btnCancelEdit" class="hidden px-4 rounded-xl bg-slate-200 text-slate-600"><i class="fas fa-times"></i></button>
-          </div>
-        </div>
-      </div>
+  <input type="hidden" id="editPedidoIndex" value="-1">
+  
+  <div class="flex gap-2">
+    <input type="number" id="peCant" placeholder="Cant." value="1" min="1" 
+           class="w-1/4 p-3 rounded-xl ring-1 ring-purple-300 text-sm outline-none">
+    <input type="text" id="peCli" placeholder="Nombre Cliente" 
+           class="w-3/4 p-3 rounded-xl ring-1 ring-purple-300 text-sm outline-none">
+  </div>
+
+  <input type="text" id="pePro" placeholder="Producto/Detalle" 
+         class="w-full p-3 rounded-xl ring-1 ring-purple-300 text-sm outline-none">
+  
+  <div class="grid grid-cols-2 gap-2">
+    <input type="number" id="peTot" placeholder="Total $" class="p-3 rounded-xl ring-1 ring-purple-300 text-sm">
+    <input type="number" id="peAnt" placeholder="Anticipo $" class="p-3 rounded-xl ring-1 ring-purple-300 text-sm">
+  </div>
+
+  <div class="flex gap-2">
+    <button onclick="guardarPedido()" id="btnSavePedido" class="flex-1 py-3 rounded-xl bg-purple-600 text-white font-bold uppercase text-xs">Guardar Pedido</button>
+    <button onclick="cancelarEdicionPedido()" id="btnCancelEdit" class="hidden px-4 rounded-xl bg-slate-200 text-slate-600"><i class="fas fa-times"></i></button>
+  </div>
+</div>
 
       <div class="glass-card p-4 overflow-hidden">
         <div class="flex justify-between items-center mb-4">
@@ -286,6 +296,7 @@
                 <td class="p-3 text-red-500 font-bold">$${saldo.toFixed(2)}</td>
                 <td class="p-3 space-x-2 rounded-r-lg">
                     <button onclick="descargarTicket(${i})" class="text-blue-500 hover:scale-110 transition-transform" title="PDF"><i class="fas fa-file-pdf"></i></button>
+                    <button onclick="descargarPNG(${i})" class="text-emerald-500 hover:scale-110 transition-transform" title="Imagen PNG"><i class="fas fa-image"></i></button>
                     <button onclick="editarPedido(${i})" class="text-amber-500 hover:scale-110 transition-transform" title="Editar"><i class="fas fa-edit"></i></button>
                     <button onclick="borrarPedido(${i})" class="text-red-400 hover:scale-110 transition-transform" title="Borrar"><i class="fas fa-trash"></i></button>
                 </td>
@@ -360,28 +371,102 @@
   function borrarPedido(i) { if(confirm("¿Eliminar pedido?")) { DB.pedidos.splice(i,1); actualizar(); } }
   function borrarProd(i) { DB.productos.splice(i,1); actualizar(); }
 
+  
   // --- FUNCIÓN PDF ---
-  function descargarTicket(i) {
+function descargarTicket(i) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: [80, 150] }); // Formato ticket
     const pe = DB.pedidos[i];
+    const logoUrl = 'imagen/Logo.jpg'; // Ruta de tu logo
 
-    doc.setFontSize(12);
-    doc.text("ACCESORIOS GARCIA", 40, 10, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text("------------------------------------------", 40, 15, { align: 'center' });
-    doc.text(`CLIENTE: ${pe.cliente}`, 5, 25);
-    doc.text(`PRODUCTO: ${pe.producto}`, 5, 30);
-    doc.text(`TOTAL: $${pe.total.toFixed(2)}`, 5, 40);
-    doc.text(`ANTICIPO: $${pe.pagado.toFixed(2)}`, 5, 45);
-    doc.setFontSize(10);
-    doc.text(`RESTA: $${(pe.total - pe.pagado).toFixed(2)}`, 5, 55);
-    doc.setFontSize(8);
-    doc.text("------------------------------------------", 40, 65, { align: 'center' });
-    doc.text("Gracias por su preferencia", 40, 75, { align: 'center' });
+    // Crear un objeto de imagen para cargar el logo
+    const img = new Image();
+    img.src = logoUrl;
 
-    doc.save(`Pedido_${pe.cliente}.pdf`);
-  }
+    img.onload = function() {
+        // 1. Agregar Logo al centro (x: 30, y: 5, ancho: 20, alto: 20)
+        // Ajustamos la posición para que el texto no se encime
+        doc.addImage(img, 'JPEG', 30, 5, 20, 20);
+
+        // 2. Título de la empresa (Bajamos la posición Y a 30)
+        doc.setFontSize(12);
+        doc.text("ACCESORIOS GARCIA", 40, 30, { align: 'center' });
+        
+        doc.setFontSize(8);
+        doc.text("------------------------------------------", 40, 35, { align: 'center' });
+
+        // 3. Información del Pedido (Incluyendo Cantidad)
+        doc.text(`CANTIDAD: ${pe.cant || 1}`, 5, 45); //
+        doc.text(`CLIENTE: ${pe.cliente}`, 5, 50);
+        doc.text(`PRODUCTO: ${pe.producto}`, 5, 55);
+        
+        doc.text(`TOTAL: $${pe.total.toFixed(2)}`, 5, 65);
+        doc.text(`ANTICIPO: $${pe.pagado.toFixed(2)}`, 5, 70);
+        
+        doc.setFontSize(10);
+        doc.text(`RESTA: $${(pe.total - pe.pagado).toFixed(2)}`, 5, 80);
+        
+        doc.setFontSize(8);
+        doc.text("------------------------------------------", 40, 90, { align: 'center' });
+        doc.text("Gracias por su preferencia", 40, 100, { align: 'center' });
+
+        // Guardar el PDF
+        doc.save(`Pedido_${pe.cliente}.pdf`);
+    };
+
+    // Manejo de error si el logo no carga
+    img.onerror = function() {
+        alert("Error al cargar el logo para el PDF. Verifica que la imagen existe en la carpeta imagen/.");
+    };
+}
+ 
+// --- FUNCIÓN PNG (VA AQUÍ AFUERA) ---
+function descargarPNG(i) {
+    const pe = DB.pedidos[i];
+    const ticketVirtual = document.createElement('div');
+    
+    // Estilo "fantasma" para generar la imagen sin estorbar el diseño
+    ticketVirtual.style = "width: 300px; padding: 20px; background: white; text-align: center; font-family: sans-serif; position: fixed; left: -9999px; top: 0;";
+    
+    ticketVirtual.innerHTML = `
+        <div style="border: 2px solid #0ea5e9; padding: 15px; border-radius: 15px; background: white;">
+            <img src="imagen/Logo.jpg" style="width: 70px; height: 70px; border-radius: 50%; border: 2px solid #0ea5e9; margin-bottom: 10px;">
+            <h2 style="margin: 0; color: #1e293b; font-size: 18px; text-transform: uppercase;">Accesorios García</h2>
+            <p style="font-size: 10px; color: #94a3b8;">------------------------------------------</p>
+            <div style="text-align: left; font-size: 13px; color: #334155;">
+                <p><b>CANTIDAD:</b> ${pe.cant || 1} unidades</p>
+                <p><b>CLIENTE:</b> ${pe.cliente}</p>
+                <p><b>PRODUCTO:</b> ${pe.producto}</p>
+                <p style="margin-top: 10px;"><b>TOTAL:</b> $${pe.total.toFixed(2)}</p>
+                <p><b>ANTICIPO:</b> $${pe.pagado.toFixed(2)}</p>
+                <div style="background: #fff1f2; padding: 8px; border-radius: 8px; margin-top: 10px; text-align: center;">
+                    <p style="margin: 0; color: #e11d48; font-size: 16px;"><b>RESTA: $${(pe.total - pe.pagado).toFixed(2)}</b></p>
+                </div>
+            </div>
+            <p style="font-size: 10px; color: #94a3b8; margin-top: 15px;">------------------------------------------</p>
+            <p style="font-size: 11px; font-weight: bold; color: #0ea5e9;">¡Gracias por tu preferencia!</p>
+        </div>
+    `;
+
+    document.body.appendChild(ticketVirtual);
+
+    // Pequeño tiempo de espera para que html2canvas capture el logo cargado
+    setTimeout(() => {
+        html2canvas(ticketVirtual, { useCORS: true }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `Ticket_${pe.cliente}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            document.body.removeChild(ticketVirtual);
+        }).catch(err => {
+            console.error("Error al generar imagen:", err);
+            document.body.removeChild(ticketVirtual);
+        });
+    }, 500);
+}
+
+
+
 
   // Resto de funciones (Chart, FormP, Excel)
   function renderChart(up, ur) {
