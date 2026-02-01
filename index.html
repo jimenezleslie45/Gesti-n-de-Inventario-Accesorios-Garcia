@@ -275,17 +275,19 @@
 
     else if (tabActual === 3) { // PEDIDOS (CRUD)
         document.getElementById('historialTitulo').innerText = "Gestión de Pedidos";
-        thead.innerHTML = '<th class="p-3">Cliente</th><th class="p-3">Debe</th><th class="p-3">Acciones</th>';
+        thead.innerHTML = '<th class="p-3">Cant.</th><th class="p-3">Cliente</th><th class="p-3">Debe</th><th class="p-3">Acciones</th>';
+        
         DB.pedidos.forEach((pe, i) => {
             let saldo = pe.total - pe.pagado;
             pPendiente += saldo;
             lista.innerHTML += `<tr>
+                <td class="p-3 text-center font-bold bg-slate-50 rounded-l-lg">${pe.cant || 1}x</td>
                 <td class="p-3 font-bold">${pe.cliente}<br><span class="text-[9px] text-slate-400">${pe.producto}</span></td>
                 <td class="p-3 text-red-500 font-bold">$${saldo.toFixed(2)}</td>
-                <td class="p-3 space-x-2">
-                    <button onclick="descargarTicket(${i})" class="text-blue-500" title="PDF"><i class="fas fa-file-pdf"></i></button>
-                    <button onclick="editarPedido(${i})" class="text-amber-500" title="Editar"><i class="fas fa-edit"></i></button>
-                    <button onclick="borrarPedido(${i})" class="text-red-400" title="Borrar"><i class="fas fa-trash"></i></button>
+                <td class="p-3 space-x-2 rounded-r-lg">
+                    <button onclick="descargarTicket(${i})" class="text-blue-500 hover:scale-110 transition-transform" title="PDF"><i class="fas fa-file-pdf"></i></button>
+                    <button onclick="editarPedido(${i})" class="text-amber-500 hover:scale-110 transition-transform" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button onclick="borrarPedido(${i})" class="text-red-400 hover:scale-110 transition-transform" title="Borrar"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -302,13 +304,17 @@
   }
 
   // --- LOGICA CRUD PEDIDOS ---
-  function guardarPedido() {
+ function guardarPedido() {
     const index = parseInt(document.getElementById('editPedidoIndex').value);
+    // Agregamos esta línea para capturar la cantidad de pedidos
+    const cant = parseInt(document.getElementById('peCant')?.value) || 1; 
+
     const pe = {
         cliente: document.getElementById('peCli').value.toUpperCase(),
         producto: document.getElementById('pePro').value.toUpperCase(),
         total: parseFloat(document.getElementById('peTot').value) || 0,
-        pagado: parseFloat(document.getElementById('peAnt').value) || 0
+        pagado: parseFloat(document.getElementById('peAnt').value) || 0,
+        cant: cant // Guardamos la cantidad en el objeto
     };
 
     if(pe.cliente === "") return alert("Falta nombre del cliente");
@@ -321,6 +327,7 @@
     }
     
     actualizar();
+    // Limpiar campos
     document.getElementById('peCli').value = "";
     document.getElementById('pePro').value = "";
     document.getElementById('peTot').value = "";
@@ -387,19 +394,36 @@
     });
   }
 
+ 
   document.getElementById('formP').onsubmit = (e) => {
     e.preventDefault();
     const sku = document.getElementById('pSku').value;
-    DB.productos.push({
-      sku: sku,
-      tipo: document.getElementById('pTipo').value,
-      nom: document.getElementById('pNom').value.toUpperCase(),
-      cos: parseFloat(document.getElementById('pCos').value) || 0,
-      pre: parseFloat(document.getElementById('pPre').value) || 0
-    });
+    const tipo = document.getElementById('pTipo').value;
+    const nom = document.getElementById('pNom').value.toUpperCase();
+    const cos = parseFloat(document.getElementById('pCos').value) || 0;
+    const pre = parseFloat(document.getElementById('pPre').value) || 0;
+    // Capturamos la cantidad del input que agregamos
+    const cant = parseInt(document.getElementById('pCant').value) || 1;
+
+    if (nom === "") return alert("Nombre de producto obligatorio");
+
+    // Agregamos el producto las veces que diga la cantidad
+    for (let i = 0; i < cant; i++) {
+        DB.productos.push({
+            sku: sku,
+            tipo: tipo,
+            nom: nom,
+            cos: cos,
+            pre: pre,
+            cant: 1, // Se guarda como 1 unidad para el historial
+            fecha: new Date().toISOString()
+        });
+    }
+
     actualizar();
     notificarDisponibles(sku);
     e.target.reset();
+    document.getElementById('pCant').value = "1"; // Resetear cantidad a 1
   };
    
   // --- LOGICA RIFAS ---
